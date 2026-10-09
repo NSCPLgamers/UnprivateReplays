@@ -49,10 +49,41 @@
   .error {
     color: #aa3333;
   }
+  .search {
+    display: none;
+    margin-top: 20px;
+  }
+  .search input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+  }
+  .search input:focus {
+    outline: none;
+    border-color: #2266aa;
+    box-shadow: 0 0 0 2px rgba(34, 102, 170, 0.15);
+  }
+  .count {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #666;
+  }
+  td.empty {
+    text-align: center;
+    color: #666;
+  }
 </style>
 </head>
 <body>
 <h1>Battle Replays</h1>
+<div class="search" id="search">
+  <input type="search" id="filter" placeholder="Filter by user..." autocomplete="off" aria-label="Filter by user">
+  <div class="count" id="count"></div>
+</div>
 <div id="content"><p class="loading">Loading replays...</p></div>
 <script>
 (function() {
@@ -76,17 +107,50 @@
       return;
     }
 
-    var html = '<table><thead><tr><th>Date</th><th>User 1</th><th>User 2</th></tr></thead><tbody>';
-    replays.forEach(function(r) {
+    allReplays = replays;
+    content.innerHTML = '<table><thead><tr><th>Date</th><th>User 1</th><th>User 2</th></tr></thead><tbody id="rows"></tbody></table>';
+    searchBox.style.display = 'block';
+    applyFilter();
+  }
+
+  var allReplays = [];
+  var searchBox = document.getElementById('search');
+  var filterInput = document.getElementById('filter');
+  var countEl = document.getElementById('count');
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function applyFilter() {
+    var q = filterInput.value.trim().toLowerCase();
+    var matches = allReplays.filter(function(r) {
+      return !q
+        || r.user1.toLowerCase().indexOf(q) !== -1
+        || r.user2.toLowerCase().indexOf(q) !== -1;
+    });
+
+    var html = '';
+    matches.forEach(function(r) {
       html += '<tr>'
-        + '<td><a href="s14_replays/' + encodeURIComponent(r.file) + '">' + r.date + '</a></td>'
-        + '<td>' + r.user1 + '</td>'
-        + '<td>' + r.user2 + '</td>'
+        + '<td><a href="s14_replays/' + encodeURIComponent(r.file) + '">' + escapeHtml(r.date) + '</a></td>'
+        + '<td>' + escapeHtml(r.user1) + '</td>'
+        + '<td>' + escapeHtml(r.user2) + '</td>'
         + '</tr>';
     });
-    html += '</tbody></table>';
-    content.innerHTML = html;
+    if (matches.length === 0) {
+      html = '<tr><td class="empty" colspan="3">No replays match "' + escapeHtml(filterInput.value.trim()) + '".</td></tr>';
+    }
+    document.getElementById('rows').innerHTML = html;
+
+    countEl.textContent = q
+      ? matches.length + ' of ' + allReplays.length + ' replays'
+      : allReplays.length + ' replays';
   }
+
+  filterInput.addEventListener('input', applyFilter);
 
   // Try GitHub API first (works for public repos)
   var path = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
